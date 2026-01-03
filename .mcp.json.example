@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "obsidian-anki-bridge": {
+      "command": "node",
+      "args": ["/Users/Jason-uk/AI/AI_Coding/Repositories/obsidian-anki-bridge/dist/index.js"],
+      "env": {
+        "VAULT_PATH": "/Users/Jason-uk/Library/Mobile Documents/iCloud~md~obsidian/Documents/RinaHiSchool/RinaHighSchool",
+        "FLASHCARDS_FOLDER": "Flashcards",
+        "DECK_PREFIX": "Rina"
+      }
+    }
+  }
+}
