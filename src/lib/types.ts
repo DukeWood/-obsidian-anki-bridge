@@ -26,8 +26,9 @@ export const FlashcardFrontmatterSchema = z.object({
   scope: z.enum(['KS3', 'GCSE', 'ALEV']).optional(),
   subject: z.string().optional(),
   tags: z.union([z.string(), z.array(z.string())]).optional(),
-  created: z.string().optional(),
-  updated: z.string().optional(),
+  // gray-matter parses YAML dates as Date objects, so accept both
+  created: z.union([z.string(), z.date()]).optional(),
+  updated: z.union([z.string(), z.date()]).optional(),
 });
 
 export type FlashcardFrontmatter = z.infer<typeof FlashcardFrontmatterSchema>;
