@@ -90,37 +90,124 @@ export class AnkiClient {
   }
 
   /**
-   * Check if note model exists, create if not
+   * CSS for ObsidianFlashcard note type
+   */
+  private getModelCss(): string {
+    return `
+      .card {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 18px;
+        text-align: left;
+        color: #333;
+        background-color: #fff;
+        padding: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+        line-height: 1.6;
+      }
+      .card h1, .card h2, .card h3 {
+        text-align: center;
+        margin-bottom: 1em;
+      }
+      .card ul, .card ol {
+        text-align: left;
+        padding-left: 2em;
+      }
+      .card li {
+        margin-bottom: 0.5em;
+      }
+      .card strong {
+        color: #1a1a1a;
+      }
+      .card code {
+        background: #f4f4f4;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'SF Mono', Monaco, monospace;
+      }
+      .card pre {
+        background: #f4f4f4;
+        padding: 12px;
+        border-radius: 6px;
+        overflow-x: auto;
+      }
+      .card blockquote {
+        border-left: 4px solid #ddd;
+        margin: 1em 0;
+        padding-left: 1em;
+        color: #666;
+      }
+      .card hr {
+        border: none;
+        border-top: 1px solid #ddd;
+        margin: 1.5em 0;
+      }
+      /* Callout styles */
+      .callout {
+        padding: 12px 16px;
+        margin: 1em 0;
+        border-radius: 6px;
+        border-left: 4px solid;
+      }
+      .callout-tip {
+        background: #e8f5e9;
+        border-color: #4caf50;
+      }
+      .callout-info {
+        background: #e3f2fd;
+        border-color: #2196f3;
+      }
+      .callout-warning {
+        background: #fff3e0;
+        border-color: #ff9800;
+      }
+      .callout-danger, .callout-error {
+        background: #ffebee;
+        border-color: #f44336;
+      }
+      .callout-note {
+        background: #f3e5f5;
+        border-color: #9c27b0;
+      }
+      .source-link {
+        font-size: 12px;
+        color: #888;
+        margin-top: 20px;
+        text-align: center;
+      }
+      .source-link a {
+        color: #666;
+        text-decoration: none;
+      }
+      .source-link a:hover {
+        text-decoration: underline;
+      }
+      /* Dark mode support */
+      .night_mode .card {
+        background-color: #1e1e1e;
+        color: #e0e0e0;
+      }
+      .night_mode .card code {
+        background: #2d2d2d;
+      }
+      .night_mode .card pre {
+        background: #2d2d2d;
+      }
+    `;
+  }
+
+  /**
+   * Check if note model exists, create if not, update CSS if exists
    */
   async ensureNoteModel(): Promise<void> {
     const models = await this.invoke<string[]>('modelNames');
+    const css = this.getModelCss();
 
     if (!models.includes('ObsidianFlashcard')) {
       await this.invoke('createModel', {
         modelName: 'ObsidianFlashcard',
         inOrderFields: ['Front', 'Back', 'SourceLink'],
-        css: `
-          .card {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            font-size: 18px;
-            text-align: center;
-            color: #333;
-            background-color: #fff;
-            padding: 20px;
-          }
-          .source-link {
-            font-size: 12px;
-            color: #888;
-            margin-top: 20px;
-          }
-          .source-link a {
-            color: #666;
-            text-decoration: none;
-          }
-          .source-link a:hover {
-            text-decoration: underline;
-          }
-        `,
+        css,
         cardTemplates: [
           {
             Name: 'Card 1',
@@ -128,6 +215,14 @@ export class AnkiClient {
             Back: `{{FrontSide}}<hr id="answer">{{Back}}<div class="source-link">{{SourceLink}}</div>`,
           },
         ],
+      });
+    } else {
+      // Update CSS for existing model
+      await this.invoke('updateModelStyling', {
+        model: {
+          name: 'ObsidianFlashcard',
+          css,
+        },
       });
     }
   }

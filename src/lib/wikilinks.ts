@@ -3,7 +3,16 @@
  *
  * Converts Obsidian-style [[wikilinks]] to clickable deep links in Anki cards.
  * Uses obsidian:// protocol for native app integration.
+ * Also converts Markdown to HTML for proper Anki rendering.
  */
+
+import { marked } from 'marked';
+
+// Configure marked for safe HTML output
+marked.setOptions({
+  breaks: true,  // Convert \n to <br>
+  gfm: true,     // GitHub Flavored Markdown
+});
 
 /**
  * HTML entity escaping to prevent XSS in Anki cards
@@ -81,7 +90,32 @@ export function convertImages(text: string, vaultName: string, vaultPath: string
 }
 
 /**
+ * Convert Obsidian callouts to styled HTML divs
+ * > [!tip] Title → <div class="callout callout-tip"><strong>Title</strong>...</div>
+ */
+export function convertCallouts(text: string): string {
+  // Pattern: > [!type] optional title followed by content lines starting with >
+  const calloutPattern = /^>\s*\[!(\w+)\]\s*(.*)$/gm;
+
+  return text.replace(calloutPattern, (_, type: string, title: string) => {
+    const typeClass = type.toLowerCase();
+    const titleHtml = title ? `<strong>${escapeHtml(title)}</strong><br>` : '';
+    return `<div class="callout callout-${typeClass}">${titleHtml}`;
+  });
+}
+
+/**
+ * Convert Markdown to HTML using marked
+ */
+export function markdownToHtml(text: string): string {
+  // marked.parse can return string or Promise<string>, we use sync mode
+  const result = marked.parse(text);
+  return typeof result === 'string' ? result : text;
+}
+
+/**
  * Process all Obsidian-specific syntax in flashcard content
+ * Order matters: wikilinks → images → callouts → markdown
  */
 export function processObsidianSyntax(
   text: string,
@@ -89,7 +123,18 @@ export function processObsidianSyntax(
   vaultPath: string
 ): string {
   let result = text;
+
+  // 1. Convert Obsidian wikilinks before markdown processing
   result = convertWikilinks(result, vaultName);
+
+  // 2. Convert Obsidian image embeds
   result = convertImages(result, vaultName, vaultPath);
+
+  // 3. Convert Obsidian callouts (before markdown, as they use > syntax)
+  result = convertCallouts(result);
+
+  // 4. Convert remaining Markdown to HTML
+  result = markdownToHtml(result);
+
   return result;
 }
