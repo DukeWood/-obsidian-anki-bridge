@@ -10,6 +10,7 @@ import { existsSync } from 'node:fs';
 import { type Config, FlashcardSyncInputSchema, type Flashcard } from '../lib/types.js';
 import { parseFlashcardFile, findFlashcardFiles } from '../lib/vault-reader.js';
 import { AnkiClient } from '../lib/anki-client.js';
+import { updateFileSyncState } from '../lib/frontmatter-writer.js';
 
 export const flashcardSyncTool = {
   name: 'flashcard_sync',
@@ -146,10 +147,36 @@ export async function handleFlashcardSync(
   const vaultName = basename(config.vaultPath);
   const result = await anki.syncCards(allCards, vaultName);
 
+  // Write back anki_note_ids to each source file's frontmatter
+  const writeBackErrors: string[] = [];
+  for (const [relativeFile, uids] of Object.entries(result.fileToUids)) {
+    const fullPath = join(config.vaultPath, relativeFile);
+
+    // Build noteIds map for this file only
+    const fileNoteIds: Record<string, number> = {};
+    for (const uid of uids) {
+      if (result.noteIds[uid]) {
+        fileNoteIds[uid] = result.noteIds[uid];
+      }
+    }
+
+    if (Object.keys(fileNoteIds).length > 0) {
+      try {
+        updateFileSyncState(fullPath, fileNoteIds);
+      } catch (error) {
+        writeBackErrors.push(
+          `${relativeFile}: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+  }
+
   return JSON.stringify({
     success: true,
     ...result,
     deckSummary,
+    writeBackErrors: writeBackErrors.length > 0 ? writeBackErrors : undefined,
+    filesUpdated: Object.keys(result.fileToUids).length,
   });
 }
 

@@ -210,15 +210,20 @@ export class AnkiClient {
 
   /**
    * Sync multiple flashcards to Anki
+   * Returns note ID mappings for write-back to frontmatter
    */
   async syncCards(cards: Flashcard[], vaultName: string): Promise<SyncResult> {
     const startTime = Date.now();
+    const noteIds: Record<string, number> = {};
+    const fileToUids: Record<string, string[]> = {};
     const result: SyncResult = {
       created: 0,
       updated: 0,
       unchanged: 0,
       errors: [],
       duration: 0,
+      noteIds,
+      fileToUids,
     };
 
     // Ensure model exists
@@ -234,16 +239,27 @@ export class AnkiClient {
     for (const card of cards) {
       try {
         const existingNoteId = await this.findNoteByUid(card.uid);
+        let noteId: number;
 
         if (existingNoteId) {
           // Update existing note
           await this.updateNote(existingNoteId, card, vaultName);
+          noteId = existingNoteId;
           result.updated++;
         } else {
-          // Create new note
-          await this.addNote(card, vaultName);
+          // Create new note - addNote returns the note ID
+          noteId = await this.addNote(card, vaultName);
           result.created++;
         }
+
+        // Track UID → noteId mapping
+        noteIds[card.uid] = noteId;
+
+        // Track which UIDs came from which file (for write-back)
+        if (!fileToUids[card.sourceFile]) {
+          fileToUids[card.sourceFile] = [];
+        }
+        fileToUids[card.sourceFile].push(card.uid);
       } catch (error) {
         result.errors.push({
           uid: card.uid,

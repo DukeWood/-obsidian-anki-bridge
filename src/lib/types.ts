@@ -63,6 +63,10 @@ export const SyncResultSchema = z.object({
     error: z.string(),
   })),
   duration: z.number().describe('Milliseconds'),
+  /** Map of card UID to Anki note ID for write-back */
+  noteIds: z.record(z.string(), z.number()).describe('UID to Anki note ID mapping'),
+  /** Map of source file to array of UIDs synced from that file */
+  fileToUids: z.record(z.string(), z.array(z.string())).describe('Source file to UIDs mapping'),
 });
 
 export type SyncResult = z.infer<typeof SyncResultSchema>;
